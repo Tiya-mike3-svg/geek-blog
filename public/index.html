@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>GeekHub - Anime, Gaming, Movies & TV News</title>
+
+<meta name="description" content="GeekHub brings the latest anime, gaming, movie and TV news.">
+<meta name="keywords" content="anime news, gaming news, movie news, tv shows">
+<meta name="author" content="GeekHub">
+<meta name="robots" content="index, follow">
+
+<style>
+
+body{
+margin:0;
+font-family:'Inter', sans-serif;
+background:#f2f2f2;
+font-size:21px;
+}
+
+/* HEADER */
+
+header{
+background:black;
+color:white;
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:20px;
+}
+
+.logo{
+font-size:28px;
+font-weight:bold;
+cursor:pointer;
+}
+
+nav a{
+color:white;
+margin-left:15px;
+text-decoration:none;
+cursor:pointer;
+}
+
+/* ADMIN PANEL */
+
+.admin{
+background:white;
+padding:20px;
+}
+
+.admin input,
+.admin textarea,
+.admin select{
+width:100%;
+padding:10px;
+margin-bottom:10px;
+}
+
+/* GRID */
+
+.section{
+padding:20px;
+}
+
+#articles{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+gap:20px;
+}
+
+/* CARD */
+
+.article-card{
+background:white;
+border-radius:10px;
+overflow:hidden;
+cursor:pointer;
+transition:0.2s;
+}
+
+.article-card:hover{
+transform:scale(1.03);
+}
+
+.article-card img{
+width:100%;
+height:150px;
+object-fit:cover;
+}
+
+.article-card h3{
+padding:10px;
+margin:0;
+}
+
+.article-card p{
+padding:0 10px 10px;
+margin:0;
+font-size:14px;
+color:gray;
+}
+
+/* ARTICLE PAGE */
+
+#articlePage{
+display:none;
+padding:20px;
+}
+
+#articlePage img{
+width:100%;
+max-width:700px;
+margin:10px 0;
+}
+
+.back{
+background:black;
+color:white;
+border:none;
+padding:10px 15px;
+margin-bottom:15px;
+cursor:pointer;
+}
+
+.actions{
+margin:20px 0;
+}
+
+.actions button{
+padding:8px 15px;
+margin-right:10px;
+cursor:pointer;
+}
+
+.comment{
+background:white;
+padding:10px;
+margin-bottom:10px;
+border-radius:6px;
+}
+
+/* =========================
+   TABLET
+   ========================= */
+
+@media (max-width: 900px){
+
+body{
+font-size:18px;
+}
+
+header{
+flex-direction:column;
+align-items:flex-start;
+}
+
+nav{
+margin-top:10px;
+}
+
+nav a{
+display:inline-block;
+margin:5px 10px 5px 0;
+}
+
+#articles{
+grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+}
+
+.article-card img{
+height:130px;
+}
+
+}
+
+
+/* =========================
+   MOBILE
+   ========================= */
+
+@media (max-width: 600px){
+
+body{
+font-size:16px;
+}
+
+header{
+padding:15px;
+}
+
+.logo{
+font-size:22px;
+}
+
+nav{
+display:flex;
+flex-wrap:wrap;
+}
+
+nav a{
+font-size:14px;
+margin:5px 8px;
+}
+
+.section{
+padding:15px;
+}
+
+#articles{
+grid-template-columns:1fr;
+}
+
+.article-card img{
+height:180px;
+}
+
+#articlePage img{
+max-width:100%;
+}
+
+textarea{
+height:100px;
+}
+
+}
+
+
+/* =========================
+   SMALL PHONES
+   ========================= */
+
+@media (max-width: 400px){
+
+body{
+font-size:15px;
+}
+
+.logo{
+font-size:20px;
+}
+
+nav a{
+font-size:13px;
+}
+
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+
+<div class="logo" onclick="showHome()">GeekHub</div>
+
+<nav>
+<a onclick="showHome()">Home</a>
+<a onclick="showCategory('anime')">Anime</a>
+<a onclick="showCategory('gaming')">Gaming</a>
+<a onclick="showCategory('movies')">Movies</a>
+<a onclick="showCategory('tv')">TV</a>
+<a onclick="showTrending()">Trending</a>
+<a onclick="showLiked()">Most Liked</a>
+<a onclick="showCommented()">Most Commented</a>
+</nav>
+
+</header>
+
+
+<section class="section" id="homePage">
+
+<h2 id="sectionTitle">Latest Articles</h2>
+
+<div id="articles"></div>
+
+</section>
+
+<section id="articlePage">
+
+<button class="back" onclick="goHome()">⬅ Back</button>
+
+<div id="articleContent"></div>
+
+<div class="actions">
+
+<button onclick="likeArticle()">👍 Like <span id="likeCount">0</span></button>
+
+<button onclick="favArticle()">⭐ Favourite</button>
+
+</div>
+
+<h3>Comments</h3>
+
+<div id="comments"></div>
+
+<textarea id="commentText" placeholder="Write comment..."></textarea>
+
+<button onclick="addComment()">Post Comment</button>
+
+</section>
+
+<script>
+
+let currentArticle=null;
+
+async function loadArticles(){
+
+const res = await fetch("/articles");
+const dbArticles = await res.json();
+
+let data = {
+anime:[],
+gaming:[],
+movies:[],
+tv:[]
+};
+
+dbArticles.forEach(a=>{
+if(data[a.category]){
+data[a.category].push({
+title:a.title,
+image:a.image,
+content:a.content,
+date:a.id,
+likes:0,
+comments:[],
+fav:false
+});
+}
+});
+
+return data;
+
+}
+
+function addArticle(){
+
+const title=document.getElementById("title").value;
+const image=document.getElementById("image").value;
+const category=document.getElementById("category").value;
+const content=document.getElementById("content").value;
+
+/* SEND TO NODE BACKEND */
+
+fetch("/articles",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+title:title,
+image:image,
+category:category,
+content:content
+})
+}).then(()=>{
+showCategory(category);
+});
+
+}
+
+function renderArticles(list){
+
+const container=document.getElementById("articles");
+
+container.innerHTML="";
+
+list.forEach(article=>{
+
+const card=document.createElement("div");
+
+card.className="article-card";
+
+card.innerHTML=`
+<img src="${article.image || 'https://via.placeholder.com/300x150'}">
+<h3>${article.title}</h3>
+<p>👍 ${article.likes||0} | 💬 ${(article.comments||[]).length}</p>
+`;
+
+card.onclick=()=>openArticle(article);
+
+container.appendChild(card);
+
+});
+
+}
+
+async function showHome(){
+
+document.getElementById("sectionTitle").innerText="Latest Articles";
+
+let data=await loadArticles();
+
+let all=[...data.anime,...data.gaming,...data.movies,...data.tv];
+
+all.sort((a,b)=>b.date-a.date);
+
+renderArticles(all.slice(0,10));
+
+}
+
+async function showCategory(cat){
+
+document.getElementById("sectionTitle").innerText=cat.toUpperCase();
+
+let data=await loadArticles();
+
+renderArticles(data[cat]);
+
+}
+
+function openArticle(article){
+
+currentArticle=article;
+
+document.getElementById("homePage").style.display="none";
+document.getElementById("articlePage").style.display="block";
+
+document.getElementById("articleContent").innerHTML=`
+
+<h1>${article.title}</h1>
+
+<img src="${article.image || 'https://via.placeholder.com/300x150'}">
+
+<div>${article.content}</div>
+
+`;
+
+document.getElementById("likeCount").innerText=article.likes||0;
+
+document.title=article.title+" | GeekHub";
+
+let meta=document.querySelector("meta[name='description']");
+if(meta) meta.setAttribute("content",article.content.substring(0,150));
+
+loadComments();
+
+}
+
+function goHome(){
+
+document.getElementById("homePage").style.display="block";
+document.getElementById("articlePage").style.display="none";
+
+showHome();
+
+}
+
+function likeArticle(){
+
+currentArticle.likes++;
+
+document.getElementById("likeCount").innerText=currentArticle.likes;
+
+}
+
+function favArticle(){
+
+currentArticle.fav=true;
+
+alert("Added to favourites ⭐");
+
+}
+
+function addComment(){
+
+const text=document.getElementById("commentText").value;
+
+if(!currentArticle.comments) currentArticle.comments=[];
+
+currentArticle.comments.push(text);
+
+document.getElementById("commentText").value="";
+
+loadComments();
+
+}
+
+function loadComments(){
+
+const box=document.getElementById("comments");
+
+box.innerHTML="";
+
+if(!currentArticle.comments) return;
+
+currentArticle.comments.forEach(c=>{
+
+const div=document.createElement("div");
+
+div.className="comment";
+
+div.innerText=c;
+
+box.appendChild(div);
+
+});
+
+}
+
+async function showTrending(){
+
+document.getElementById("sectionTitle").innerText="Trending";
+
+let data=await loadArticles();
+
+let all=[...data.anime,...data.gaming,...data.movies,...data.tv];
+
+all.forEach(a=>{
+a.score=(a.likes||0)+((a.comments||[]).length*2)+(a.fav?3:0);
+});
+
+all.sort((a,b)=>b.score-a.score);
+
+renderArticles(all.slice(0,10));
+
+}
+
+async function showLiked(){
+
+let data=await loadArticles();
+
+let all=[...data.anime,...data.gaming,...data.movies,...data.tv];
+
+all.sort((a,b)=>(b.likes||0)-(a.likes||0));
+
+renderArticles(all);
+
+}
+
+async function showCommented(){
+
+let data=await loadArticles();
+
+let all=[...data.anime,...data.gaming,...data.movies,...data.tv];
+
+all.sort((a,b)=>((b.comments||[]).length)-((a.comments||[]).length));
+
+renderArticles(all);
+
+}
+
+showHome();
+
+</script>
+
+</body>
+</html>

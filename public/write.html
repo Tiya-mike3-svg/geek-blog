@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Write Article</title>
+<style>
+
+body{
+font-family:Arial;
+background:#f4f4f4;
+padding:40px;
+}
+
+form{
+background:white;
+padding:20px;
+max-width:600px;
+margin:auto;
+box-shadow:0 0 10px rgba(0,0,0,0.2);
+}
+
+input, textarea, select{
+width:100%;
+padding:10px;
+margin:10px 0;
+}
+
+button{
+padding:10px;
+background:black;
+color:white;
+border:none;
+cursor:pointer;
+}
+
+.section-block{
+border-top:1px solid #ddd;
+margin-top:20px;
+padding-top:20px;
+}
+
+</style>
+</head>
+
+<body>
+
+<h2>Write New Article</h2>
+
+<form id="articleForm">
+
+<input type="text" id="title" placeholder="Article Title" required>
+
+<input type="text" id="image" placeholder="Main Image URL">
+
+<select id="category">
+<option value="gaming">Gaming</option>
+<option value="anime">Anime</option>
+<option value="movies">Movies</option>
+<option value="tv">tv</option>
+</select>
+
+<div id="sections"></div>
+
+<button type="button" onclick="addSection()">Add Section</button>
+
+<br><br>
+
+<button type="submit">Publish Article</button>
+
+</form>
+
+<script>
+
+let sectionCount = 0
+
+function addSection(){
+
+sectionCount++
+
+const container = document.getElementById("sections")
+
+const block = document.createElement("div")
+
+block.className = "section-block"
+
+block.innerHTML = `
+
+<h3>${sectionCount}. Section Title</h3>
+
+<input type="text" class="sectionTitle" placeholder="Example: Naruto">
+
+<input type="text" class="sectionImage" placeholder="Image URL">
+
+<textarea class="sectionText" rows="5" placeholder="Write description..."></textarea>
+
+`
+
+container.appendChild(block)
+
+}
+
+document.getElementById("articleForm").addEventListener("submit", async function(e){
+
+e.preventDefault()
+
+const title = document.getElementById("title").value
+const category = document.getElementById("category").value
+
+let content = ""
+
+const titles = document.querySelectorAll(".sectionTitle")
+const images = document.querySelectorAll(".sectionImage")
+const texts = document.querySelectorAll(".sectionText")
+
+for(let i=0;i<titles.length;i++){
+
+content += `
+<h2>${i+1}. ${titles[i].value}</h2>
+<img src="${images[i].value}" style="max-width:100%">
+<p>${texts[i].value}</p>
+`
+
+}
+
+await fetch("/articles",{
+
+method:"POST",
+
+headers:{
+"Content-Type":"application/json"
+},
+
+body:JSON.stringify({
+title,
+image:document.getElementById("image").value,
+category,
+content
+})
+
+})
+
+alert("Article Published!");
+window.location.href = "/";
+
+})
+
+addSection()
+
+</script>
+</html>
+
