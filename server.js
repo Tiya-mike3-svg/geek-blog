@@ -1,7 +1,7 @@
 const express = require("express");
-const mysql = require("mysql2");
 const cors = require("cors");
 const bodyParser = require("body-parser");
+const { Pool } = require("pg");
 
 const app = express();
 
@@ -10,49 +10,50 @@ app.use(bodyParser.json());
 app.use(express.json());
 app.use(express.static("public"));
 
-/* MYSQL CONNECTION */
+/* NEON POSTGRES CONNECTION */
 
-const db = mysql.createConnection({
-    host: "localhost",
-    user: "root",
-    password: "",
-    database: "cloudy_db"
+const pool = new Pool({
+  connectionString: "Ppostgresql://neondb_owner:npg_TNAyKq8utFC5@ep-rapid-pond-agyqpcsb-pooler.c-2.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require",
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
-db.connect(err => {
-    if (err) {
-        console.log("Database connection failed");
-        return;
-    }
-    console.log("MySQL Connected");
-});
+pool.connect()
+.then(() => console.log("Connected to Neon database"))
+.catch(err => console.error("Database connection error", err));
 
 /* GET ARTICLES */
 
-app.get("/articles", (req, res) => {
-    db.query("SELECT * FROM articles ORDER BY id DESC", (err, result) => {
-        if (err) return res.send(err);
-        res.json(result);
-    });
+app.get("/articles", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM articles ORDER BY id DESC");
+    res.json(result.rows);
+  } catch (err) {
+    res.send(err);
+  }
 });
 
 /* ADD ARTICLE */
 
-app.post("/articles", (req, res) => {
+app.post("/articles", async (req, res) => {
 
-    const {title, content, category, image} = req.body;
+  const { title, content, category, image } = req.body;
 
-    const sql = "INSERT INTO articles (title, content, category, image) VALUES (?,?,?,?)";
+  try {
+    await pool.query(
+      "INSERT INTO articles (title, content, category, image) VALUES ($1,$2,$3,$4)",
+      [title, content, category, image]
+    );
 
-    db.query(sql, [title, content, category, image], (err, result) => {
+    res.json({ message: "Article added" });
 
-        if (err) return res.send(err);
-
-        res.json({message:"Article added"});
-    });
+  } catch (err) {
+    res.send(err);
+  }
 
 });
 
 app.listen(3000, () => {
-    console.log("Server running on http://localhost:3000");
+  console.log("Server running on http://localhost:3000");
 });
