@@ -1,130 +1,119 @@
+// ===============================
+// GeekHub News Blog - Node Only
+// ===============================
+
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const mysql = require("mysql2");
+const fs = require("fs");
+const path = require("path");
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+const DATA_FILE = path.join(__dirname, "articles.json");
 
+// Middleware
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.json());
-app.use(express.static("public")); // your frontend files
+app.use(express.static("public")); // frontend files
 
-/* ===============================
-   MYSQL CONNECTION (FreeSQL)
-   =============================== */
-const db = mysql.createConnection({
-  host: "sql8.freesqldatabase.com",
-  user: "sql8820096",
-  password: "SybGIfXQJn",
-  database: "sql8820096",
-  port: 3306
-});
-
-db.connect((err) => {
-  if (err) {
-    console.error("MySQL connection failed:", err);
-  } else {
-    console.log("Connected to FreeSQL database ✅");
+// ===============================
+// Load articles from JSON file
+// ===============================
+let articles = [];
+if (fs.existsSync(DATA_FILE)) {
+  try {
+    articles = JSON.parse(fs.readFileSync(DATA_FILE));
+    console.log("Loaded articles from JSON ✅");
+  } catch (e) {
+    console.error("Error parsing JSON:", e);
+    articles = [];
   }
-});
+}
 
-/* ===============================
-   HOME ROUTE
-   =============================== */
+// ===============================
+// Save articles to JSON file (batched to avoid blocking)
+// ===============================
+let saveScheduled = false;
+function saveArticles() {
+  if (!saveScheduled) {
+    saveScheduled = true;
+    setTimeout(() => {
+      try {
+        fs.writeFileSync(DATA_FILE, JSON.stringify(articles, null, 2));
+        console.log("Articles saved to JSON ✅");
+      } catch (e) {
+        console.error("Error saving JSON:", e);
+      }
+      saveScheduled = false;
+    }, 2000); // save every 2 seconds
+  }
+}
+
+// ===============================
+// Routes
+// ===============================
+
+// Home route
 app.get("/", (req, res) => {
-  res.send("GeekHub server is working 🚀");
+  res.send("GeekHub server is running 🚀");
 });
 
-/* ===============================
-   GET ARTICLES
-   =============================== */
+// Get all articles
 app.get("/articles", (req, res) => {
-  const sql = "SELECT * FROM articles ORDER BY id DESC";
-  db.query(sql, (err, results) => {
-    if (err) return res.status(500).json({ error: "Database error" });
-
-    results.forEach(a => {
-      if (a.comments) a.comments = JSON.parse(a.comments);
-      else a.comments = [];
-    });
-
-    res.json(results);
-  });
+  res.json(articles.sort((a, b) => b.id - a.id));
 });
 
-/* ===============================
-   ADD ARTICLE
-   =============================== */
+// Add new article
 app.post("/articles", (req, res) => {
   const { title, content, category, image } = req.body;
-  const sql = "INSERT INTO articles (title, content, category, image) VALUES (?,?,?,?)";
+  const id = articles.length ? articles[articles.length - 1].id + 1 : 1;
 
-  db.query(sql, [title, content, category, image], (err) => {
-    if (err) return res.status(500).json({ error: "Database error" });
-    res.json({ message: "Article added successfully ✅" });
+  articles.push({
+    id,
+    title,
+    content,
+    category,
+    image,
+    likes: 0,
+    fav: false,
+    comments: []
   });
+
+  saveArticles();
+  res.json({ message: "Article added successfully ✅" });
 });
 
-/* ===============================
-   LIKE ARTICLE
-   =============================== */
+// Like article
 app.post("/articles/:id/like", (req, res) => {
-  const articleId = req.params.id;
-  const sql = "UPDATE articles SET likes = likes + 1 WHERE id = ?";
-
-  db.query(sql, [articleId], (err) => {
-    if (err) return res.status(500).json({ error: "Database error" });
-    res.json({ message: "Liked ✅" });
-  });
+  const article = articles.find(a => a.id == req.params.id);
+  if (article) article.likes++;
+  saveArticles();
+  res.json({ message: "Liked ✅" });
 });
 
-/* ===============================
-   FAVOURITE ARTICLE
-   =============================== */
+// Favourite article
 app.post("/articles/:id/favourite", (req, res) => {
-  const articleId = req.params.id;
-  const sql = "UPDATE articles SET favourites = favourites + 1 WHERE id = ?";
-
-  db.query(sql, [articleId], (err) => {
-    if (err) return res.status(500).json({ error: "Database error" });
-    res.json({ message: "Favourited ✅" });
-  });
+  const article = articles.find(a => a.id == req.params.id);
+  if (article) article.fav = true;
+  saveArticles();
+  res.json({ message: "Favourited ✅" });
 });
 
-/* ===============================
-   ADD COMMENT
-   =============================== */
+// Add comment
 app.post("/articles/:id/comment", (req, res) => {
-  const articleId = req.params.id;
-  const { comment } = req.body;
-
-  db.query("SELECT comments FROM articles WHERE id = ?", [articleId], (err, results) => {
-    if (err) return res.status(500).json({ error: "Database error" });
-
-    let comments = [];
-    if (results[0] && results[0].comments) {
-      comments = JSON.parse(results[0].comments);
-    }
-
-    comments.push(comment);
-
-    db.query(
-      "UPDATE articles SET comments = ? WHERE id = ?",
-      [JSON.stringify(comments), articleId],
-      (err2) => {
-        if (err2) return res.status(500).json({ error: "Database error" });
-        res.json({ message: "Comment added ✅" });
-      }
-    );
-  });
+  const article = articles.find(a => a.id == req.params.id);
+  if (article) {
+    article.comments.push(req.body.comment);
+    saveArticles();
+  }
+  res.json({ message: "Comment added ✅" });
 });
 
-/* ===============================
-   START SERVER
-   =============================== */
-const PORT = process.env.PORT || 3000;
-
+// ===============================
+// Start server
+// ===============================
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on http://localhost:${PORT}`);
 });
