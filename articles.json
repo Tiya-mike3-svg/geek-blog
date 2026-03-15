@@ -1,0 +1,12 @@
+[
+  {
+    "id": 1,
+    "title": "naruto",
+    "content": "\n<h2>1. </h2>\n<img src=\"\" style=\"max-width:100%\">\n<p>naruto uzumaki</p>\n",
+    "category": "anime",
+    "image": "https://upload.wikimedia.org/wikipedia/en/9/94/NarutoCoverTankobon1.jpg",
+    "likes": 0,
+    "fav": false,
+    "comments": []
+  }
+]
