@@ -3,148 +3,115 @@
 <head>
 <title>Write Article</title>
 <style>
-
-body{
-font-family:Arial;
-background:#f4f4f4;
-padding:40px;
-}
-
-form{
-background:white;
-padding:20px;
-max-width:600px;
-margin:auto;
-box-shadow:0 0 10px rgba(0,0,0,0.2);
-}
-
-input, textarea, select{
-width:100%;
-padding:10px;
-margin:10px 0;
-}
-
-button{
-padding:10px;
-background:black;
-color:white;
-border:none;
-cursor:pointer;
-}
-
-.section-block{
-border-top:1px solid #ddd;
-margin-top:20px;
-padding-top:20px;
-}
-
+body{font-family:Arial;background:#f4f4f4;padding:40px;}
+form{background:white;padding:20px;max-width:600px;margin:auto;box-shadow:0 0 10px rgba(0,0,0,0.2);}
+input, textarea, select{width:100%;padding:10px;margin:10px 0;}
+button{padding:10px;background:black;color:white;border:none;cursor:pointer;}
+.section-block{border-top:1px solid #ddd;margin-top:20px;padding-top:20px;}
 </style>
 </head>
-
 <body>
 
 <h2>Write New Article</h2>
-
 <form id="articleForm">
-
 <input type="text" id="title" placeholder="Article Title" required>
-
-<input type="text" id="image" placeholder="Main Image URL">
-
+<input type="text" id="image" placeholder="Main Image URL" onclick="setActiveInput(this)">
+<input type="file" id="uploadImage" accept="image/*">
+<button type="button" onclick="uploadImage()">Upload Image</button>
+<input type="text" id="author" placeholder="Author Name">
+<input type="text" id="authorImage" placeholder="Author Image URL">
 <select id="category">
 <option value="gaming">Gaming</option>
 <option value="anime">Anime</option>
 <option value="movies">Movies</option>
 <option value="tv">tv</option>
 </select>
-
 <div id="sections"></div>
-
 <button type="button" onclick="addSection()">Add Section</button>
-
 <br><br>
-
 <button type="submit">Publish Article</button>
-
 </form>
 
 <script>
+let editMode=false, editId=null, activeImageInput=null, sectionCount=0;
 
-let sectionCount = 0
-
-function addSection(){
-
-sectionCount++
-
-const container = document.getElementById("sections")
-
-const block = document.createElement("div")
-
-block.className = "section-block"
-
-block.innerHTML = `
-
-<h3>${sectionCount}. Section Title</h3>
-
-<input type="text" class="sectionTitle" placeholder="Example: Naruto">
-
-<input type="text" class="sectionImage" placeholder="Image URL">
-
-<textarea class="sectionText" rows="5" placeholder="Write description..."></textarea>
-
-`
-
-container.appendChild(block)
-
+function setActiveInput(input){activeImageInput=input;}
+function addSection(title="",image="",text=""){
+  sectionCount++;
+  const c=document.getElementById("sections");
+  const b=document.createElement("div");
+  b.className="section-block";
+  b.innerHTML=`<h3>${sectionCount}. Section Title</h3>
+<input type="text" class="sectionTitle" placeholder="Example: Naruto" value="${title}">
+<input type="text" class="sectionImage" placeholder="Image URL" value="${image}" onclick="setActiveInput(this)">
+<textarea class="sectionText" rows="5" placeholder="Write description...">${text}</textarea>`;
+  c.appendChild(b);
 }
+
+const editData=JSON.parse(localStorage.getItem("editArticle"));
+if(editData){
+  document.getElementById("title").value=editData.title;
+  document.getElementById("image").value=editData.image;
+  document.getElementById("category").value=editData.category;
+  document.getElementById("author").value=editData.author||"GeekHub Team";
+  document.getElementById("authorImage").value=editData.authorImage||"";
+
+  const tempDiv=document.createElement("div"); tempDiv.innerHTML=editData.content;
+  tempDiv.querySelectorAll("h2").forEach((h2,i)=>{
+    const img=h2.nextElementSibling && h2.nextElementSibling.tagName==="IMG"?h2.nextElementSibling.src:"";
+    const p=h2.nextElementSibling && h2.nextElementSibling.nextElementSibling?h2.nextElementSibling.nextElementSibling.innerText:"";
+    addSection(h2.innerText.replace(/^\d+\. /,""),img,p);
+  });
+  editMode=true; editId=Number(editData.id);
+}
+if(sectionCount===0)addSection();
 
 document.getElementById("articleForm").addEventListener("submit", async function(e){
+  e.preventDefault();
+  const title=document.getElementById("title").value;
+  const category=document.getElementById("category").value;
+  const author=document.getElementById("author").value;
+  const authorImage=document.getElementById("authorImage").value;
 
-e.preventDefault()
-
-const title = document.getElementById("title").value
-const category = document.getElementById("category").value
-
-let content = ""
-
-const titles = document.querySelectorAll(".sectionTitle")
-const images = document.querySelectorAll(".sectionImage")
-const texts = document.querySelectorAll(".sectionText")
-
-for(let i=0;i<titles.length;i++){
-
-content += `
-<h2>${i+1}. ${titles[i].value}</h2>
+  let content="";
+  const titles=document.querySelectorAll(".sectionTitle");
+  const images=document.querySelectorAll(".sectionImage");
+  const texts=document.querySelectorAll(".sectionText");
+  for(let i=0;i<titles.length;i++){
+    content+=`<h2>${i+1}. ${titles[i].value}</h2>
 <img src="${images[i].value}" style="max-width:100%">
-<p>${texts[i].value}</p>
-`
+<p>${texts[i].value}</p>`;
+  }
 
+  const url=editMode?`/articles/${editId}`:"/articles";
+  const method=editMode?"PUT":"POST";
+
+  await fetch(url,{
+    method,
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({title,image:document.getElementById("image").value,category,content,author,authorImage})
+  });
+
+  localStorage.removeItem("editArticle");
+  alert(editMode?"Article Updated ✅":"Article Published ✅");
+  window.location.href="/";
+});
+
+async function uploadImage(){
+  const inputFile=document.getElementById("uploadImage");
+  if(!inputFile.files.length)return alert("Select a file first!");
+  const formData=new FormData();
+  formData.append("image",inputFile.files[0]);
+  try{
+    const res=await fetch("/upload",{method:"POST",body:formData});
+    const data=await res.json();
+    if(data.path){
+      if(activeImageInput) activeImageInput.value=data.path;
+      else document.getElementById("image").value=data.path;
+      alert("Image uploaded ✅");
+    } else alert("Upload failed ❌");
+  }catch(err){console.error(err); alert("Upload failed ❌");}
 }
-
-await fetch("/articles",{
-
-method:"POST",
-
-headers:{
-"Content-Type":"application/json"
-},
-
-body:JSON.stringify({
-title,
-image:document.getElementById("image").value,
-category,
-content
-})
-
-})
-
-alert("Article Published!");
-window.location.href = "/";
-
-})
-
-addSection()
-
 </script>
+</body>
 </html>
-
