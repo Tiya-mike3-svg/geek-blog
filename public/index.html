@@ -26,6 +26,104 @@ nav a{color:white;margin-left:15px;text-decoration:none;cursor:pointer;}
 .actions{margin:20px 0;}
 .actions button{padding:8px 15px;margin-right:10px;cursor:pointer;}
 .comment{background:white;padding:10px;margin-bottom:10px;border-radius:6px;}
+/* =========================
+   📱 MOBILE (Phones)
+========================= */
+@media (max-width: 600px){
+
+  body{
+    font-size:16px;
+  }
+
+  header{
+    flex-direction:column;
+    align-items:flex-start;
+    padding:15px;
+  }
+
+  .logo{
+    font-size:22px;
+    margin-bottom:10px;
+  }
+
+  nav{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+
+  nav a{
+    margin:0;
+    font-size:14px;
+  }
+
+  #articles{
+    grid-template-columns:1fr;
+  }
+
+  .article-card img{
+    height:180px;
+  }
+
+  #articlePage img{
+    width:100%;
+  }
+
+  textarea{
+    width:100%;
+    height:80px;
+  }
+}
+
+
+/* =========================
+   📱 TABLET
+========================= */
+@media (max-width: 900px){
+
+  body{
+    font-size:18px;
+  }
+
+  header{
+    flex-wrap:wrap;
+  }
+
+  nav{
+    margin-top:10px;
+  }
+
+  #articles{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .article-card img{
+    height:160px;
+  }
+}
+
+
+/* =========================
+   💻 LARGE SCREENS
+========================= */
+@media (min-width: 1200px){
+
+  body{
+    font-size:20px;
+  }
+
+  #articles{
+    grid-template-columns:repeat(4,1fr);
+  }
+
+  .section{
+    max-width:1200px;
+    margin:auto;
+  }
+
+}
+
+
 </style>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-0JW2ELCCX8"></script>
 <script>
@@ -72,7 +170,7 @@ let currentArticle=null,ADMIN_KEY="Gambatukatiyamike03";
 async function loadArticles(){
   const res=await fetch("/articles"); const db=await res.json();
   let data={anime:[],gaming:[],movies:[],tv:[]};
-  db.forEach(a=>{ if(data[a.category]) data[a.category].push({...a,date:a.id}); });
+  db.forEach(a=>{ if(data[a.category]) data[a.category].push(a); });
   return data;
 }
 
@@ -86,14 +184,32 @@ function renderArticles(list){
   });
 }
 
+function getTimeAgo(timestamp){
+  const now = Date.now();
+  const diff = now - timestamp;
+
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(diff / (1000 * 60));
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+  if(seconds < 60) return "Just now";
+  if(minutes < 60) return minutes + " min ago";
+  if(hours < 24) return hours + " hrs ago";
+  if(days < 7) return days + " days ago";
+
+  const d = new Date(timestamp);
+  return d.toLocaleDateString("en-US",{year:'numeric',month:'short',day:'numeric'});
+}
+
 function openArticle(article){
   currentArticle=article;
   document.getElementById("homePage").style.display="none";
   document.getElementById("articlePage").style.display="block";
 
   const editButton=`<button onclick="requestEdit()">✏️ Edit</button>`;
-  const d=new Date(article.date||Date.now());
-  const formatted=d.toLocaleDateString("en-US",{year:'numeric',month:'short',day:'numeric'});
+  const formatted=getTimeAgo(article.date||Date.now()); // ✅ ONLY CHANGE HERE
+
   const infoBox=`<div style="display:flex;align-items:center;margin:10px 0;background:#f2f2f2;padding:10px;border-radius:8px;">
 <img src="${article.authorImage||'https://via.placeholder.com/50'}" style="width:40px;height:40px;border-radius:50%;margin-right:10px;">
 <span>Written by <strong>${article.author||'GeekHub Team'}</strong> | ${formatted}</span></div>`;

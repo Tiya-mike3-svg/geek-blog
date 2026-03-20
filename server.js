@@ -37,14 +37,8 @@ if (fs.existsSync(DATA_FILE)) {
 // ===============================
 let saveScheduled = false;
 function saveArticles() {
-  if (!saveScheduled) {
-    saveScheduled = true;
-    setTimeout(() => {
-      try { fs.writeFileSync(DATA_FILE, JSON.stringify(articles, null, 2)); } 
-      catch (e) { console.error(e); }
-      saveScheduled = false;
-    }, 2000);
-  }
+  try { fs.writeFileSync(DATA_FILE, JSON.stringify(articles, null, 2)); } 
+  catch (e) { console.error(e); }
 }
 
 // ===============================
@@ -70,27 +64,52 @@ app.post("/articles", (req,res) => {
   res.json({ message:"Article added ✅" });
 });
 
-// Like
+// ===============================
+// 🔥 FIXED LIKE
+// ===============================
 app.post("/articles/:id/like", (req,res) => {
   const a = articles.find(a => a.id==req.params.id);
-  if(a) a.likes++;
-  saveArticles();
-  res.json({ message:"Liked ✅" });
+
+  if(a){
+    a.likes = (a.likes || 0) + 1;
+    saveArticles();
+    return res.json({ message:"Liked ✅" });
+  }
+
+  res.status(404).json({ message:"Article not found ❌" });
 });
 
-// Favourite
+// ===============================
+// 🔥 FIXED FAVOURITE
+// ===============================
 app.post("/articles/:id/favourite", (req,res) => {
   const a = articles.find(a => a.id==req.params.id);
-  if(a) a.fav=true;
-  saveArticles();
-  res.json({ message:"Favourited ✅" });
+
+  if(a){
+    a.fav = true;
+    saveArticles();
+    return res.json({ message:"Favourited ✅" });
+  }
+
+  res.status(404).json({ message:"Article not found ❌" });
 });
 
-// Comment
+// ===============================
+// 🔥 FIXED COMMENT
+// ===============================
 app.post("/articles/:id/comment", (req,res) => {
   const a = articles.find(a => a.id==req.params.id);
-  if(a) { a.comments.push(req.body.comment); saveArticles(); }
-  res.json({ message:"Comment added ✅" });
+
+  if(a){
+    if(!a.comments) a.comments = [];
+    if(req.body.comment && req.body.comment.trim() !== ""){
+      a.comments.push(req.body.comment);
+      saveArticles();
+      return res.json({ message:"Comment added ✅" });
+    }
+  }
+
+  res.status(400).json({ message:"Failed ❌" });
 });
 
 // Update
